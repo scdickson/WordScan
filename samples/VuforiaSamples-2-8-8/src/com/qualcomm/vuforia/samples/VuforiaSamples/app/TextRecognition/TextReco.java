@@ -5,14 +5,39 @@
 
 package com.qualcomm.vuforia.samples.VuforiaSamples.app.TextRecognition;
 
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnErrorListener;
+import android.media.MediaPlayer.OnPreparedListener;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -33,7 +58,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewGroup.LayoutParams;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
@@ -67,6 +95,9 @@ import com.qualcomm.vuforia.samples.VuforiaSamples.app.TextRecognition.TextRecoR
 public class TextReco extends Activity implements SampleApplicationControl
 {
 	private static final String LOGTAG = "TextReco";
+	private static final String URL = "https://ajax.googleapis.com/ajax/services/search/images?v=1.0&safe=high&q=";
+	
+	Context context;
 
 	SampleApplicationSession vuforiaAppSession;
 
@@ -77,6 +108,8 @@ public class TextReco extends Activity implements SampleApplicationControl
 	// Our OpenGL view:
 	private SampleApplicationGLView mGlView;
 
+	Activity activity;
+	
 	// Our renderer:
 	private TextRecoRenderer mRenderer;
 
@@ -87,6 +120,8 @@ public class TextReco extends Activity implements SampleApplicationControl
 	private RelativeLayout mUILayout;
 	
 	private TextView definition, posView;
+	
+	private ImageView img_def, play_sound;
 
 	private LoadingDialogHandler loadingDialogHandler = new LoadingDialogHandler(
 			this);
@@ -112,6 +147,8 @@ public class TextReco extends Activity implements SampleApplicationControl
 	{
 		Log.d(LOGTAG, "onCreate");
 		super.onCreate(savedInstanceState);
+		
+		context = this;
 
 		vuforiaAppSession = new SampleApplicationSession(this);
 
@@ -130,6 +167,8 @@ public class TextReco extends Activity implements SampleApplicationControl
 		definitionView.setTextColor(Color.parseColor("#ffc754"));
 		posView = (TextView) findViewById(R.id.pos);
 		posView.setTextColor(Color.parseColor("#ffc754"));
+		play_sound = (ImageView) findViewById(R.id.play_sound);
+		img_def = (ImageView) findViewById(R.id.img_def);
 		
 		if(definitionView == null)
 		{
@@ -137,9 +176,6 @@ public class TextReco extends Activity implements SampleApplicationControl
 		}
 		
 		Parse.initialize(this, "dNSrgbF0wn6FqmxiApvKo4ygEShIS25E8QOBLrYy", "6nLbWZTpHE9hASVgNC2IADpfi6A4OVDzsx8w3Kdn");
-		ParseObject testObject = new ParseObject("TestObject");
-		testObject.put("foo", "bar");
-		testObject.saveInBackground();
 	}
 
 	// Process Single Tap event to trigger autofocus
@@ -192,8 +228,20 @@ public class TextReco extends Activity implements SampleApplicationControl
 			{
 				Bundle b = msg.getData();
 				String data[] = b.getStringArray("def");
-				definitionView.setText("Definition: " + (capitalize(data[0])));
-				posView.setText("Part of speech: " + data[1]);
+				definitionView.setText("Definition: " + (capitalize(data[0])) + ".");
+				posView.setText("Part of speech: " + capitalize(data[1]));
+				final String URL = data[2];
+				System.out.println(new ImageSearchApi().execute(img_def, data[3]));
+				
+				play_sound.setOnClickListener(new OnClickListener(){
+
+					@Override
+					public void onClick(View v) {
+						// TODO Auto-generated method stub
+						new PlaySound().execute(URL);
+					}
+					
+				});
 			}
 			catch(Exception e)
 			{
@@ -201,6 +249,195 @@ public class TextReco extends Activity implements SampleApplicationControl
 			}
 		}
 	};
+	
+	private class PlaySound extends AsyncTask<String, Void, Void>
+	{
+		public String url = "http://media.merriam-webster.com/soundc11/";
+		
+		protected Void doInBackground(String... params)
+        {
+			try
+			{
+				url += params[0].charAt(0) + "/" + params[0];
+				MediaPlayer mediaPlayer = new MediaPlayer();
+				mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+				mediaPlayer.setDataSource(url);
+				mediaPlayer.prepareAsync();
+				//You can show progress dialog here untill it prepared to play
+				mediaPlayer.setOnPreparedListener(new OnPreparedListener() {
+				        @Override
+				        public void onPrepared(MediaPlayer mp) {
+				            //Now dismis progress dialog, Media palyer will start playing
+				            mp.start();
+				        }
+				    });
+				    mediaPlayer.setOnErrorListener(new OnErrorListener() {
+				        @Override
+				        public boolean onError(MediaPlayer mp, int what, int extra) {
+				            // dissmiss progress bar here. It will come here when MediaPlayer
+				            //  is not able to play file. You can show error message to user
+				            return false;
+				        }
+				    });
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			return null;
+        }
+		
+		protected void onPostExecute(Void result)
+		{
+			
+		}
+	}
+	public class ImageSearchApi extends AsyncTask<Object, Void, String>
+	{
+		ImageView iv;
+		String endpoint;
+	protected String doInBackground(Object... arg0)
+	{
+		String result = null;
+		iv = (ImageView) arg0[0];
+		endpoint = URL + (String) arg0[1];
+		
+		if (endpoint.startsWith("http://") || endpoint.startsWith("https://"))
+		{
+			// Send a GET request
+			try
+			{
+				// Send data
+				URL url = new URL(endpoint);
+				URLConnection conn = url.openConnection();
+
+				// Get the response
+				BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+				StringBuffer sb = new StringBuffer();
+				String line;
+				while ((line = rd.readLine()) != null)
+				{
+					sb.append(line);
+				}
+				rd.close();
+				result = sb.toString();
+			} catch (Exception e)
+			{
+				e.printStackTrace();
+				result = null;
+			}
+		}
+		
+		try {
+			JSONObject object = (JSONObject) new JSONTokener(result).nextValue();
+			JSONObject resultsObject =  (JSONObject) object.getJSONObject("responseData").getJSONArray("results").get(0);
+			String url = (String) resultsObject.get("unescapedUrl");
+			return url;
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			result = null;
+		}
+		return null;
+	}
+	
+		protected void onPostExecute(String result)
+		{
+			if(result != null)
+			{
+				System.out.println(result);
+				new loadImageFromParse().execute(iv, result);
+			}
+		}
+	}
+	
+	
+	protected class loadImageFromParse extends AsyncTask<Object, Integer, Void>
+    {
+        ImageView photo;
+        Bitmap image;
+        File compressed, file;
+        String word;
+
+        protected Void doInBackground(Object... arg0) //ImageView as arg0, word as arg1
+        {
+            try
+            {
+                photo = (ImageView) arg0[0];
+                URL url = new URL((String)arg0[1]);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                InputStream is = connection.getInputStream();
+
+                file = new File(context.getFilesDir() + "/" + word + "_uncompressed");
+                compressed = new File(context.getFilesDir() + "/" + word);
+                FileOutputStream fos = new FileOutputStream(file);
+                BufferedOutputStream bos = new BufferedOutputStream(fos, 1024);
+                byte data[] = new byte[1024];
+
+                int bytesRead = 0;
+                while((bytesRead = is.read(data, 0, data.length)) >= 0)
+                {
+                    bos.write(data, 0, bytesRead);
+                }
+
+                bos.close();
+                fos.close();
+                is.close();
+
+                BitmapFactory.Options o = new BitmapFactory.Options();
+                o.inJustDecodeBounds = true;
+                BitmapFactory.decodeStream(new FileInputStream(file),null,o);
+                final int REQUIRED_SIZE=80;
+
+                int width_tmp=o.outWidth, height_tmp=o.outHeight;
+                int scale=1;
+                while(true){
+                    if(width_tmp/2<REQUIRED_SIZE || height_tmp/2<REQUIRED_SIZE)
+                        break;
+                    width_tmp/=2;
+                    height_tmp/=2;
+                    scale*=2;
+                }
+
+                BitmapFactory.Options o2 = new BitmapFactory.Options();
+                o2.inSampleSize=scale;
+                image = BitmapFactory.decodeStream(new FileInputStream(file), null, o2);
+                FileOutputStream out = new FileOutputStream(compressed);
+                image.compress(Bitmap.CompressFormat.JPEG, 90, out);
+
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        protected void onPostExecute(Void v)
+        {
+            if(image != null)
+            {
+                final Animation in = new AlphaAnimation(0.0f, 1.0f);
+                //in.setDuration(1000);
+                //photo.setImageBitmap(image);
+                //photo.startAnimation(in);
+
+                photo.setOnClickListener(new View.OnClickListener()
+                {
+                    @Override
+                    public void onClick(View view)
+                    {
+                        Intent fullscreenimage = new Intent(context, FullScreenImageView.class);
+                        fullscreenimage.putExtra("image", file.getAbsolutePath());
+                        fullscreenimage.putExtra("caption", " ");
+                        startActivity(fullscreenimage);
+                    }
+                });
+            }
+        }
+    }
+
+
 
 	// Called when the activity will start interacting with the user.
 	@Override

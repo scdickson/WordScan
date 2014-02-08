@@ -620,10 +620,11 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
 	    				 	    			if(def != null && pos != null && soundpath != null)
 	    				 	    			{
 	    				 	    				
-	    				 	    				String data[] = new String[3];
+	    				 	    				String data[] = new String[4];
 	    				 	    				data[0] = def;
 	    				 	    				data[1] = pos;
 	    				 	    				data[2] = soundpath;
+	    				 	    				data[3] = params[0];
 	    				 	    				wordCache.put(params[0], data);
 	    				 	    				definition = data;
 	    				 	    				
