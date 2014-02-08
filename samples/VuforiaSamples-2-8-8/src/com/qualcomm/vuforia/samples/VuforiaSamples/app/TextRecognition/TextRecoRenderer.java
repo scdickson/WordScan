@@ -8,6 +8,7 @@ package com.qualcomm.vuforia.samples.VuforiaSamples.app.TextRecognition;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
@@ -24,8 +25,11 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
+import android.widget.TextView;
 
 import com.qualcomm.vuforia.Matrix44F;
 import com.qualcomm.vuforia.Obb2D;
@@ -41,10 +45,12 @@ import com.qualcomm.vuforia.WordResult;
 import com.qualcomm.vuforia.samples.SampleApplication.SampleApplicationSession;
 import com.qualcomm.vuforia.samples.SampleApplication.utils.LineShaders;
 import com.qualcomm.vuforia.samples.SampleApplication.utils.SampleUtils;
+import com.qualcomm.vuforia.samples.VuforiaSamples.R;
 
-import com.mongodb.*;
 import java.util.*;
-import java.util.Arrays;
+import javax.xml.parsers.*;
+import org.w3c.dom.*;
+import org.xml.sax.InputSource;
 
 
 // The renderer class for the ImageTargets sample. 
@@ -99,29 +105,27 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
     private int viewportSize_y;
     private ByteBuffer mQuadVerts;
     private ByteBuffer mQuadIndices;
-    Mongo mongoClient;
-    DB db;
-    DBCollection table;
+    
     boolean ready = false;
     Obb2D obb;
     Vec2F wordBoxSize = null;
     TrackableResult result;
-    Map<String, String> wordCache = new HashMap<String, String>();
-    String definition = "";
+    Map<String, String[]> wordCache = new HashMap<String, String[]>();
+    String definition[] = null;
     static boolean monitorState = false;
     static final Object monitor = new Object();
+    Handler handler;
     
     
-    public TextRecoRenderer(TextReco activity, SampleApplicationSession session)
+    public TextRecoRenderer(TextReco activity, SampleApplicationSession session, Handler handler)
     {
         mActivity = activity;
         vuforiaAppSession = session;
+        this.handler = handler;
         
         try
         {
-        	mongoClient = new Mongo("98.226.145.27", 9999);
-        	db = mongoClient.getDB("DictionaryWords");
-        	table = db.getCollection("words");
+        	
         	
         }
         catch(Exception e)
@@ -268,6 +272,8 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
     	}
     }
     
+   
+    
     // The render function.
     public void renderFrame()
     {
@@ -317,9 +323,7 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
                 
                 try
                 {
-                	BasicDBObject document = new BasicDBObject();
-                	document.put("word", wordU);
-                	table.insert(document);
+                	
                 }
                 catch(Exception e)
                 {
@@ -328,20 +332,31 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
                 
                 //if(!wordU.toLowerCase().equals(last_word))
                 //{
-                	String ret;
+                	String ret[] = null;
                 	if((ret = wordCache.get(wordU.toLowerCase())) == null)
                 	{
                 		new GetDictionaryListing().execute(wordU.toLowerCase());
                 		waitForThread();
-                		wordU = definition;
-                	}
-                	else
-                	{
-                		wordU = ret;
                 	}
                 //}
                 
-                
+                	try
+                	{
+                		if(ret == null)
+                		{
+                			ret = definition;
+                		}
+                		
+	                	Message msgObj = handler.obtainMessage();
+	                    Bundle b = new Bundle();
+	                    b.putStringArray("def", ret);
+	                    msgObj.setData(b);
+	                    handler.sendMessage(msgObj);
+                	}
+                	catch(Exception e)
+                	{
+                		e.printStackTrace();
+                	}
                 
                 if (wordU != null)
                 {
@@ -558,31 +573,7 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
         
     }
     
-    private class PullItemData extends AsyncTask<Void, Void, Void>
-    {
-    	protected Void doInBackground(Void... params)
-        {
-    		try
-    		{
-    			DBCursor cursor = table.find();
-            	while(cursor.hasNext())
-            	{
-            		System.out.println(cursor.next());
-            		Log.d("fatal", cursor.next().toString());
-            	}
-            	
-            	cursor.close();
-    		}
-    		catch(Exception e)
-    		{
-    			e.printStackTrace();
-    		}
-    		return null;
-        }
-    	
-    	
-
-    }
+    
     
     private class GetDictionaryListing extends AsyncTask<String, Void, Void>
     {
@@ -596,25 +587,47 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
 	    			URL url = new URL(DICT_URL + params[0] + "?key=" + API_KEY);
 	    			URLConnection conn = url.openConnection();
 	    			String line;
-	    			String defbuf = "";
+	    			
+	    			String def = null;
+	    			String pos = null;
+	    			String soundpath = null;
 	    			BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 	    			while((line = in.readLine()) != null)
 	    			{
 	    				if(line.contains("<entry id"))
 	    				{
-	    					
-	    					line = line.substring(line.indexOf("<dt>") + 5);
-	    					line = line.substring(0,line.indexOf("<"));
-	    					break;
+	    				 	  pos = line.substring(line.indexOf("<fl>") + 4);
+	    				 	  //System.out.println(pos);
+	    				 	  pos = pos.substring(0, pos.indexOf("</fl>"));
+	    				 	  //System.out.println(pos);
+	    				 	  
+	    				 	  soundpath = line.substring(line.indexOf("<wav>") + 5);
+	    				 	  //System.out.println(soundpath);
+	    				 	  soundpath = soundpath.substring(0, soundpath.indexOf("</wav>"));
+	    				 	  //System.out.println(soundpath);
+	    				 	  
+	    				 	  def = line.substring(line.indexOf("<dt>") + 5);
+	    				 	  //System.out.println(def);
+	    					  def = def.substring(0,def.indexOf("<"));
+	    					  //System.out.println(def);
+	    					  break;
 	    				}
 	    			}
-	    			
-	    			//System.out.println(line);
-	    			if(line != null)
-	    			{
-	    				wordCache.put(params[0], line);
-	    				definition = line;
-	    			}
+	    				 
+	    				 	    			
+	    				 	    		System.out.println(def + ", " + pos + ", " + soundpath);
+	    				 	    		
+	    				 	    			if(def != null && pos != null && soundpath != null)
+	    				 	    			{
+	    				 	    				
+	    				 	    				String data[] = new String[3];
+	    				 	    				data[0] = def;
+	    				 	    				data[1] = pos;
+	    				 	    				data[2] = soundpath;
+	    				 	    				wordCache.put(params[0], data);
+	    				 	    				definition = data;
+	    				 	    				
+	    				 	    			}
 	    		    
 	    		}
 	    		catch(Exception e)

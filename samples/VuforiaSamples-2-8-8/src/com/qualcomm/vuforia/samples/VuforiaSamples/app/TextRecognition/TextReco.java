@@ -16,6 +16,7 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.provider.Settings;
 import android.support.v7.app.MediaRouteActionProvider;
 import android.support.v7.media.MediaRouteSelector;
@@ -40,6 +41,8 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.parse.Parse;
+import com.parse.ParseObject;
 import com.qualcomm.vuforia.CameraDevice;
 import com.qualcomm.vuforia.RectangleInt;
 import com.qualcomm.vuforia.Renderer;
@@ -67,8 +70,9 @@ public class TextReco extends Activity implements SampleApplicationControl
 
 	SampleApplicationSession vuforiaAppSession;
 
-	private final static int COLOR_OPAQUE = Color.argb(178, 0, 0, 0);
+	private final static int COLOR_OPAQUE = Color.argb(0, 255, 246, 112);//Color.argb(178, 0, 0, 0); #FFF670
 	private final static int WORDLIST_MARGIN = 10;
+	public static TextView definitionView;
 
 	// Our OpenGL view:
 	private SampleApplicationGLView mGlView;
@@ -81,6 +85,8 @@ public class TextReco extends Activity implements SampleApplicationControl
 	private ArrayList<View> mSettingsAdditionalViews;
 
 	private RelativeLayout mUILayout;
+	
+	private TextView definition, posView;
 
 	private LoadingDialogHandler loadingDialogHandler = new LoadingDialogHandler(
 			this);
@@ -120,6 +126,20 @@ public class TextReco extends Activity implements SampleApplicationControl
 
 		mIsDroidDevice = android.os.Build.MODEL.toLowerCase().startsWith(
 				"droid");
+		definitionView = (TextView) findViewById(R.id.def);
+		definitionView.setTextColor(Color.parseColor("#ffc754"));
+		posView = (TextView) findViewById(R.id.pos);
+		posView.setTextColor(Color.parseColor("#ffc754"));
+		
+		if(definitionView == null)
+		{
+			System.exit(0);
+		}
+		
+		Parse.initialize(this, "dNSrgbF0wn6FqmxiApvKo4ygEShIS25E8QOBLrYy", "6nLbWZTpHE9hASVgNC2IADpfi6A4OVDzsx8w3Kdn");
+		ParseObject testObject = new ParseObject("TestObject");
+		testObject.put("foo", "bar");
+		testObject.saveInBackground();
 	}
 
 	// Process Single Tap event to trigger autofocus
@@ -158,6 +178,29 @@ public class TextReco extends Activity implements SampleApplicationControl
 		}
 	}
 
+	 private String capitalize(String line)
+	    {
+	      return Character.toUpperCase(line.charAt(0)) + line.substring(1);
+	    }
+	 
+	//HERE IS THIS FUCKING HANDLER
+	private final Handler handler = new Handler()
+	{
+		public void handleMessage(Message msg)
+		{            
+			try
+			{
+				Bundle b = msg.getData();
+				String data[] = b.getStringArray("def");
+				definitionView.setText("Definition: " + (capitalize(data[0])));
+				posView.setText("Part of speech: " + data[1]);
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+		}
+	};
 
 	// Called when the activity will start interacting with the user.
 	@Override
@@ -190,6 +233,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 				mGlView.setVisibility(View.VISIBLE);
 				mGlView.onResume();
 			}
+			
 
 	}
 
@@ -310,7 +354,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 		mGlView = new SampleApplicationGLView(this);
 		mGlView.init(translucent, depthSize, stencilSize);
 
-		mRenderer = new TextRecoRenderer(this, vuforiaAppSession);
+		mRenderer = new TextRecoRenderer(this, vuforiaAppSession, handler);
 		mGlView.setRenderer(mRenderer);
 
 		showLoupe(false);
@@ -415,6 +459,8 @@ public class TextReco extends Activity implements SampleApplicationControl
 			{
 				RelativeLayout wordListLayout = (RelativeLayout) mUILayout
 						.findViewById(R.id.wordList);
+				
+				
 				wordListLayout.removeAllViews();
 
 				if (words.size() > 0)
@@ -438,7 +484,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 							break;
 						}
 						tv = new TextView(TextReco.this);
-						tv.setText(word.text);
+						//tv.setText(word.text);
 						RelativeLayout.LayoutParams txtParams = new RelativeLayout.LayoutParams(
 								LayoutParams.MATCH_PARENT,
 								LayoutParams.WRAP_CONTENT);
@@ -784,6 +830,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 		mSettingsAdditionalViews.add(mUILayout.findViewById(R.id.topMargin));
 		mSettingsAdditionalViews.add(mUILayout.findViewById(R.id.loupeLayout));
 		mSettingsAdditionalViews.add(mUILayout.findViewById(R.id.wordList));
+		
 	}
 
 
