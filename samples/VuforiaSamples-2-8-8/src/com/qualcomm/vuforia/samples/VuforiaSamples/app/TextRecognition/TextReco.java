@@ -236,7 +236,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 				data[0] = data[0].replace(" .", ".");
 				data[0] = data[0].replace("&amp;", "&");
 				data[0] = data[0].replace("Un>", "");
-				definitionView.setText(Html.fromHtml("<i><font color=\"white\">Definition: <\font></i>" + (capitalize(data[0])) + "."));
+				definitionView.setText(Html.fromHtml("<i><font color=\"white\">" + capitalize(data[3]) + ": <\font></i>" + (capitalize(data[0])) + "."));
 				
 				if(data[1].equals("noun"))
 				{
