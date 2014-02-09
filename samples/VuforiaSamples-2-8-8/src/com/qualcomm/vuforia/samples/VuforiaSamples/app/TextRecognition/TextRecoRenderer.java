@@ -432,7 +432,7 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
                 .getProjectionMatrix().getData(), 0, mvMat, 0);
             
             GLES20.glUseProgram(shaderProgramID);
-            GLES20.glLineWidth(3.0f);
+            GLES20.glLineWidth(11.0f);
             GLES20.glVertexAttribPointer(vertexHandle, 3, GLES20.GL_FLOAT,
                 false, 0, mQuadVerts);
             GLES20.glEnableVertexAttribArray(vertexHandle);

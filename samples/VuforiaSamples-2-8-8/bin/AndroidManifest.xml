@@ -63,7 +63,7 @@
       would allow the activity to be launched multiple times.
     -->
     <application
-        android:icon="@drawable/icon"
+        android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:description="@string/app_description"
         android:launchMode="singleTask"
