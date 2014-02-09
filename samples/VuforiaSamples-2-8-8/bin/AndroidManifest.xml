@@ -106,7 +106,7 @@
         </activity>
         
         <activity
-                android:name="com.qualcomm.vuforia.samples.VuforiaSamples.app.TextRecognition.FullScreenImageView"
+                android:name=".app.TextRecognition.FullScreenImageView"
                 android:theme="@android:style/Theme.NoTitleBar.Fullscreen"/>
 
          

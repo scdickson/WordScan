@@ -31,6 +31,9 @@ import android.os.Message;
 import android.util.Log;
 import android.widget.TextView;
 
+import com.parse.FindCallback;
+import com.parse.ParseObject;
+import com.parse.ParseQuery;
 import com.qualcomm.vuforia.Matrix44F;
 import com.qualcomm.vuforia.Obb2D;
 import com.qualcomm.vuforia.Renderer;
@@ -110,11 +113,12 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
     Obb2D obb;
     Vec2F wordBoxSize = null;
     TrackableResult result;
-    Map<String, String[]> wordCache = new HashMap<String, String[]>();
+    public static Map<String, String[]> wordCache;
     String definition[] = null;
     static boolean monitorState = false;
     static final Object monitor = new Object();
     Handler handler;
+    String last_word = null;
     
     
     public TextRecoRenderer(TextReco activity, SampleApplicationSession session, Handler handler)
@@ -123,15 +127,11 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
         vuforiaAppSession = session;
         this.handler = handler;
         
-        try
+        if(wordCache == null)
         {
-        	
-        	
+        	wordCache = new HashMap<String, String[]>();
         }
-        catch(Exception e)
-        {
-        	e.printStackTrace();
-        }
+        
     }
     
     
@@ -305,8 +305,13 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
         mWords.clear();
         
         // did we find any trackables this frame?
-        for (int tIdx = 0; tIdx < state.getNumTrackableResults(); tIdx++)
+        int num_track = state.getNumTrackableResults();
+        for (int tIdx = 0; tIdx < num_track; tIdx++)
         {
+        	if(num_track > 1)
+        	{
+        		num_track = 1;
+        	}
             // get the trackable
             result = state.getTrackableResult(tIdx);
             
@@ -321,14 +326,7 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
                 
                 String wordU = word.getStringU();
                 
-                try
-                {
-                	
-                }
-                catch(Exception e)
-                {
-                	e.printStackTrace();
-                }
+                
                 
                 //if(!wordU.toLowerCase().equals(last_word))
                 //{
@@ -345,6 +343,38 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
                 		if(ret == null)
                 		{
                 			ret = definition;
+                		}
+                		
+                		if(last_word == null)
+                		{
+                			last_word = wordU;
+                		}
+                		if(!wordU.equals(last_word))
+                		{
+	                		ParseQuery<ParseObject> query = ParseQuery.getQuery("TestObject");
+	                        query.whereEqualTo("Word", wordU.toUpperCase());
+	                        final String lastWord = wordU;
+	                        query.findInBackground(new FindCallback<ParseObject>() {
+	                            public void done(List<ParseObject> scoreList, com.parse.ParseException e)
+	                            {
+	                                if(scoreList != null && scoreList.size() >= 1)
+	                                {
+	                                    scoreList.get(0).increment("Count");
+	                                    scoreList.get(0).saveInBackground();
+	                          
+	                                }
+	                                else
+	                                {
+	                                    ParseObject score = new ParseObject("TestObject");
+	                                    score.put("Word", lastWord.toUpperCase());
+	                                    score.put("Count", 1);
+	                                    score.saveInBackground();
+	                           
+	                                }
+	                            }
+	                        });
+	                        
+	                        last_word = wordU;
                 		}
                 		
 	                	Message msgObj = handler.obtainMessage();

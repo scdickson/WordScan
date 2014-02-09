@@ -56,8 +56,19 @@
             android:src="@drawable/bg70" />
     </RelativeLayout>
     
+    <ImageView
+        android:id="@+id/botMargin"
+        android:layout_width="match_parent"
+        android:layout_height="25dp"
+        android:layout_below="@id/loupeLayout"
+        android:scaleType="fitXY"
+        android:visibility="visible"
+        android:src="@drawable/bg70" />
+    
     <LinearLayout
         android:id="@+id/defLayout"
+        android:layout_marginLeft="25dp"
+        android:layout_marginRight="25dp"
         android:layout_marginTop="25dp"
         android:orientation="vertical"
         android:layout_width="match_parent"
@@ -105,7 +116,7 @@
             android:id="@+id/img_def"
             android:layout_gravity="left"
             android:layout_weight="1"
-            android:src="@drawable/play_down"
+            android:src="@drawable/eye"
             android:layout_width="0dp"
             android:layout_height="wrap_content"/>
         <ImageView

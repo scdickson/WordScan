@@ -12,7 +12,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
@@ -22,6 +22,10 @@ import java.util.List;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -34,6 +38,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.net.Uri;
@@ -43,10 +48,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Settings;
-import android.support.v7.app.MediaRouteActionProvider;
-import android.support.v7.media.MediaRouteSelector;
 import android.support.v7.media.MediaRouter;
 import android.text.Layout.Alignment;
+import android.text.Html;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.DisplayMetrics;
@@ -54,14 +58,11 @@ import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnLongClickListener;
 import android.view.ViewGroup.LayoutParams;
-import android.view.animation.AlphaAnimation;
-import android.view.animation.Animation;
 import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
@@ -70,7 +71,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.parse.Parse;
-import com.parse.ParseObject;
 import com.qualcomm.vuforia.CameraDevice;
 import com.qualcomm.vuforia.RectangleInt;
 import com.qualcomm.vuforia.Renderer;
@@ -90,12 +90,16 @@ import com.qualcomm.vuforia.samples.SampleApplication.utils.SampleApplicationGLV
 import com.qualcomm.vuforia.samples.SampleApplication.utils.SampleUtils;
 import com.qualcomm.vuforia.samples.VuforiaSamples.R;
 import com.qualcomm.vuforia.samples.VuforiaSamples.app.TextRecognition.TextRecoRenderer.WordDesc;
+import java.util.*;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 
 public class TextReco extends Activity implements SampleApplicationControl
 {
 	private static final String LOGTAG = "TextReco";
-	private static final String URL = "https://ajax.googleapis.com/ajax/services/search/images?v=1.0&safe=high&q=";
+	private static final String URL = "https://ajax.googleapis.com/ajax/services/search/images?v=1.0&safe=high&imgsz=medium&q=";
 	
 	Context context;
 
@@ -228,10 +232,40 @@ public class TextReco extends Activity implements SampleApplicationControl
 			{
 				Bundle b = msg.getData();
 				String data[] = b.getStringArray("def");
-				definitionView.setText("Definition: " + (capitalize(data[0])) + ".");
-				posView.setText("Part of speech: " + capitalize(data[1]));
+				data[0] = data[0].replace(":", "");
+				data[0] = data[0].replace(" .", ".");
+				data[0] = data[0].replace("&amp;", "&");
+				data[0] = data[0].replace("Un>", "");
+				definitionView.setText(Html.fromHtml("<i><font color=\"white\">Definition: <\font></i>" + (capitalize(data[0])) + "."));
+				
+				if(data[1].equals("noun"))
+				{
+					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"cyan\">" + capitalize(data[1]) + "<\font>"));
+				}
+				else if(data[1].equals("verb"))
+				{
+					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"magenta\">" + capitalize(data[1]) + "<\font>"));
+				}
+				else if(data[1].equals("adjective"))
+				{
+					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"green\">" + capitalize(data[1]) + "<\font>"));
+				}
+				else if(data[1].equals("adverb"))
+				{
+					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"red\">" + capitalize(data[1]) + "<\font>"));
+				}
+				else if(data[1].equals("pronoun"))
+				{
+					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"blue\">" + capitalize(data[1]) + "<\font>"));
+				}
+				else if(data[1].equals("conjunction"))
+				{
+					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"brown\">" + capitalize(data[1]) + "<\font>"));
+				}
+				
 				final String URL = data[2];
-				System.out.println(new ImageSearchApi().execute(img_def, data[3]));
+				final String name = data[3];
+				//new ImageSearchApi().execute(img_def, data[3]);
 				
 				play_sound.setOnClickListener(new OnClickListener(){
 
@@ -239,6 +273,41 @@ public class TextReco extends Activity implements SampleApplicationControl
 					public void onClick(View v) {
 						// TODO Auto-generated method stub
 						new PlaySound().execute(URL);
+					}
+					
+				});
+				
+				img_def.setOnClickListener(new OnClickListener(){
+
+					@Override
+					public void onClick(View v) {
+						// TODO Auto-generated method stub
+						Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?site=imghp&tbm=isch&source=hp&biw=1440&bih=779&q=" + name));
+						startActivity(browserIntent);
+						
+					}
+					
+					
+					
+				});
+				
+				img_def.setOnLongClickListener(new OnLongClickListener(){
+
+					@Override
+					public boolean onLongClick(View v) {
+						// TODO Auto-generated method stub
+						 MediaPlayer mp = MediaPlayer.create(context, R.raw.fox_short);
+		                    mp.setOnCompletionListener(new OnCompletionListener() {
+
+		                        @Override
+		                        public void onCompletion(MediaPlayer mp) {
+		                            // TODO Auto-generated method stub
+		                            mp.release();
+		                        }
+
+		                    });   
+		                    mp.start();
+						return false;
 					}
 					
 				});
@@ -253,13 +322,14 @@ public class TextReco extends Activity implements SampleApplicationControl
 	private class PlaySound extends AsyncTask<String, Void, Void>
 	{
 		public String url = "http://media.merriam-webster.com/soundc11/";
+		MediaPlayer mediaPlayer;
 		
 		protected Void doInBackground(String... params)
         {
 			try
 			{
 				url += params[0].charAt(0) + "/" + params[0];
-				MediaPlayer mediaPlayer = new MediaPlayer();
+				mediaPlayer = new MediaPlayer();
 				mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
 				mediaPlayer.setDataSource(url);
 				mediaPlayer.prepareAsync();
@@ -284,6 +354,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 			{
 				e.printStackTrace();
 			}
+
 			return null;
         }
 		
@@ -299,6 +370,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 	protected String doInBackground(Object... arg0)
 	{
 		String result = null;
+		String img = null;
 		iv = (ImageView) arg0[0];
 		endpoint = URL + (String) arg0[1];
 		
@@ -328,12 +400,16 @@ public class TextReco extends Activity implements SampleApplicationControl
 			}
 		}
 		
-		try {
+		try 
+		{
+			//HERE?
 			JSONObject object = (JSONObject) new JSONTokener(result).nextValue();
 			JSONObject resultsObject =  (JSONObject) object.getJSONObject("responseData").getJSONArray("results").get(0);
 			String url = (String) resultsObject.get("unescapedUrl");
-			return url;
-		} catch (JSONException e) {
+			img = url.toString();
+		    
+		} catch (Exception e) 
+		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			result = null;
@@ -341,12 +417,11 @@ public class TextReco extends Activity implements SampleApplicationControl
 		return null;
 	}
 	
-		protected void onPostExecute(String result)
+		protected void onPostExecute(String img)
 		{
-			if(result != null)
+			if(img != null)
 			{
-				System.out.println(result);
-				new loadImageFromParse().execute(iv, result);
+				new loadImageFromParse().execute(iv, img);
 			}
 		}
 	}
@@ -356,7 +431,7 @@ public class TextReco extends Activity implements SampleApplicationControl
     {
         ImageView photo;
         Bitmap image;
-        File compressed, file;
+        File compressed;
         String word;
 
         protected Void doInBackground(Object... arg0) //ImageView as arg0, word as arg1
@@ -368,9 +443,8 @@ public class TextReco extends Activity implements SampleApplicationControl
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 InputStream is = connection.getInputStream();
 
-                file = new File(context.getFilesDir() + "/" + word + "_uncompressed");
                 compressed = new File(context.getFilesDir() + "/" + word);
-                FileOutputStream fos = new FileOutputStream(file);
+                FileOutputStream fos = new FileOutputStream(compressed);
                 BufferedOutputStream bos = new BufferedOutputStream(fos, 1024);
                 byte data[] = new byte[1024];
 
@@ -384,26 +458,12 @@ public class TextReco extends Activity implements SampleApplicationControl
                 fos.close();
                 is.close();
 
-                BitmapFactory.Options o = new BitmapFactory.Options();
-                o.inJustDecodeBounds = true;
-                BitmapFactory.decodeStream(new FileInputStream(file),null,o);
-                final int REQUIRED_SIZE=80;
-
-                int width_tmp=o.outWidth, height_tmp=o.outHeight;
-                int scale=1;
-                while(true){
-                    if(width_tmp/2<REQUIRED_SIZE || height_tmp/2<REQUIRED_SIZE)
-                        break;
-                    width_tmp/=2;
-                    height_tmp/=2;
-                    scale*=2;
-                }
+               
 
                 BitmapFactory.Options o2 = new BitmapFactory.Options();
-                o2.inSampleSize=scale;
-                image = BitmapFactory.decodeStream(new FileInputStream(file), null, o2);
-                FileOutputStream out = new FileOutputStream(compressed);
-                image.compress(Bitmap.CompressFormat.JPEG, 90, out);
+                o2.inSampleSize=1;
+                image = BitmapFactory.decodeStream(new FileInputStream(compressed), null, o2);
+
 
             }
             catch(Exception e)
@@ -417,9 +477,9 @@ public class TextReco extends Activity implements SampleApplicationControl
         {
             if(image != null)
             {
-                final Animation in = new AlphaAnimation(0.0f, 1.0f);
+                //final Animation in = new AlphaAnimation(0.0f, 1.0f);
                 //in.setDuration(1000);
-                //photo.setImageBitmap(image);
+                photo.setImageBitmap(image);
                 //photo.startAnimation(in);
 
                 photo.setOnClickListener(new View.OnClickListener()
@@ -427,10 +487,10 @@ public class TextReco extends Activity implements SampleApplicationControl
                     @Override
                     public void onClick(View view)
                     {
-                        Intent fullscreenimage = new Intent(context, FullScreenImageView.class);
-                        fullscreenimage.putExtra("image", file.getAbsolutePath());
-                        fullscreenimage.putExtra("caption", " ");
-                        startActivity(fullscreenimage);
+                        //Intent fullscreenimage = new Intent(context, FullScreenImageView.class);
+                        //fullscreenimage.putExtra("image", file.getAbsolutePath());
+                        //fullscreenimage.putExtra("caption", " ");
+                        //startActivity(fullscreenimage);
                     }
                 });
             }
@@ -445,6 +505,15 @@ public class TextReco extends Activity implements SampleApplicationControl
 	{
 		Log.d(LOGTAG, "onResume");
 		super.onResume();
+		
+		try
+        {
+        	TextRecoRenderer.wordCache = (HashMap<String, String[]>) PersistenceManager.readObject(this, "cache");
+        }
+        catch(Exception e)
+        {
+        	e.printStackTrace();
+        }
 
 		// This is needed for some Droid devices to force portrait
 		if (mIsDroidDevice)
@@ -534,6 +603,16 @@ public class TextReco extends Activity implements SampleApplicationControl
 		}
 
 		stopCamera();
+		
+		try
+		{
+			PersistenceManager.writeObject(this, "cache", TextRecoRenderer.wordCache);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		
 	}
 
 
@@ -694,7 +773,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 
 			public void run()
 			{
-				RelativeLayout wordListLayout = (RelativeLayout) mUILayout
+				/*RelativeLayout wordListLayout = (RelativeLayout) mUILayout
 						.findViewById(R.id.wordList);
 				
 				
@@ -703,7 +782,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 				if (words.size() > 0)
 				{
 					LayoutParams params = wordListLayout.getLayoutParams();
-					// Changes the height and width to the specified *pixels*
+					// Changes the height and width to the specified pixels
 					int maxTextHeight = params.height - (2 * WORDLIST_MARGIN);
 
 					int[] textInfo = fontSizeForTextHeight(maxTextHeight,
@@ -744,7 +823,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 						wordListLayout.addView(tv);
 						previousView = tv;
 					}
-				}
+				}*/
 			}
 		});
 	}
