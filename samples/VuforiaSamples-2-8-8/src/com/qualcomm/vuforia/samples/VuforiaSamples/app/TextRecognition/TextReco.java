@@ -291,7 +291,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 					
 				});
 				
-				img_def.setOnLongClickListener(new OnLongClickListener(){
+				/*img_def.setOnLongClickListener(new OnLongClickListener(){
 
 					@Override
 					public boolean onLongClick(View v) {
@@ -310,7 +310,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 						return false;
 					}
 					
-				});
+				});*/
 			}
 			catch(Exception e)
 			{
