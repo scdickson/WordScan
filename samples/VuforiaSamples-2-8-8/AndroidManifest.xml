@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.qualcomm.vuforia.samples.VuforiaSamples"
-    android:versionCode="200"
-    android:versionName="2.8" >
+    package="com.boilermake.wordscan"
+    android:versionCode="101"
+    android:versionName="1.01" >
+    
+    <supports-screens android:smallScreens="false"
+                      android:normalScreens="false"
+                      android:largeScreens="true"
+                      android:xlargeScreens="true"
+                      android:requiresSmallestWidthDp="600" />
 
     <!--
         The application's compatibility with one or more versions of the Android
@@ -93,7 +99,7 @@
         
         
         <activity
-            android:name=".app.TextRecognition.TextReco"
+            android:name="com.boilermake.wordscan.TextReco"
             android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize"
         	android:theme="@style/SampleAppsTheme"
   	        android:launchMode="singleTask"
@@ -106,7 +112,7 @@
         </activity>
         
         <activity
-                android:name=".app.TextRecognition.FullScreenImageView"
+                android:name="com.boilermake.wordscan.FullScreenImageView"
                 android:theme="@android:style/Theme.NoTitleBar.Fullscreen"/>
 
          
