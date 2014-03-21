@@ -56,87 +56,12 @@
             android:src="@drawable/bg70" />
     </RelativeLayout>
     
-    <ImageView
-        android:id="@+id/botMargin"
-        android:layout_width="match_parent"
-        android:layout_height="25dp"
-        android:layout_below="@id/loupeLayout"
-        android:scaleType="fitXY"
-        android:visibility="visible"
-        android:src="@drawable/bg70" />
-    
-    <LinearLayout
-        android:id="@+id/defLayout"
-        android:layout_marginLeft="25dp"
-        android:layout_marginRight="25dp"
-        android:layout_marginTop="25dp"
-        android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-         android:layout_below="@id/loupeLayout"
-        android:background="@drawable/frame"
-        >
-    <TextView
-        android:id="@+id/def"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="30dp"
-        android:padding="7dp"
-        android:layout_marginRight="30dp"
-        android:layout_marginTop="20dp"
-        android:layout_marginBottom="20dp"
-        android:textStyle="bold"
-        android:textSize="30sp" />
-    
-    <View
-                    android:layout_width="fill_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginBottom="5dp"
-                    android:background="#D9D9D9"/>
-    
-    <TextView
-        android:id="@+id/pos"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="30dp"
-        android:padding="7dp"
-        android:layout_marginRight="30dp"
-        android:layout_marginTop="20dp"
-        android:layout_marginBottom="20dp"
-        android:textStyle="bold"
-        android:textSize="30sp" />
-    </LinearLayout>
-    
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_below="@id/defLayout">
-        <ImageView
-            android:id="@+id/img_def"
-            android:layout_gravity="left"
-            android:layout_weight="1"
-            android:src="@drawable/eye"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"/>
-        <ImageView
-            android:id="@+id/play_sound"
-            android:layout_gravity="right"
-            android:layout_weight="1"
-            android:src="@drawable/play"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"/>
-    </LinearLayout>
-    
-    
-
-    <RelativeLayout
-        android:id="@+id/wordList"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/loupeLayout"
-        android:orientation="vertical" >
-    </RelativeLayout>
+    <android.support.v4.view.ViewPager
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pager"
+    android:layout_below="@id/loupeLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" />
 
     
 </RelativeLayout>

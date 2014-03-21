@@ -62,13 +62,27 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
+import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.ScaleAnimation;
+import android.view.animation.Transformation;
 import android.widget.CheckBox;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 
 import com.boilermake.wordscan.TextRecoRenderer.WordDesc;
 import com.boilermake.wordscan.samples.SampleApplication.SampleApplicationControl;
@@ -96,10 +110,12 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 
-public class TextReco extends Activity implements SampleApplicationControl
+public class TextReco extends FragmentActivity implements SampleApplicationControl
 {
 	private static final String LOGTAG = "TextReco";
 	private static final String URL = "https://ajax.googleapis.com/ajax/services/search/images?v=1.0&safe=high&imgsz=medium&q=";
+	public static final int TYPE_DEF = 0;
+	public static final int TYPE_MWV = 1;
 	
 	Context context;
 
@@ -107,7 +123,8 @@ public class TextReco extends Activity implements SampleApplicationControl
 
 	private final static int COLOR_OPAQUE = Color.argb(0, 255, 246, 112);//Color.argb(178, 0, 0, 0); #FFF670
 	private final static int WORDLIST_MARGIN = 10;
-	public static TextView definitionView;
+	private ViewPager mPager;
+	private PagerAdapter mPagerAdapter;
 
 	// Our OpenGL view:
 	private SampleApplicationGLView mGlView;
@@ -122,10 +139,6 @@ public class TextReco extends Activity implements SampleApplicationControl
 	private ArrayList<View> mSettingsAdditionalViews;
 
 	private RelativeLayout mUILayout;
-	
-	private TextView definition, posView;
-	
-	private ImageView img_def, play_sound;
 
 	private LoadingDialogHandler loadingDialogHandler = new LoadingDialogHandler(
 			this);
@@ -142,6 +155,8 @@ public class TextReco extends Activity implements SampleApplicationControl
 	boolean mIsDroidDevice = false;
 
 	private MediaRouter mMediaRouter;
+	
+	Handler defHandler, mwHandler;
 
 
 	// Called when the activity first starts or the user navigates back to an
@@ -167,20 +182,43 @@ public class TextReco extends Activity implements SampleApplicationControl
 
 		mIsDroidDevice = android.os.Build.MODEL.toLowerCase().startsWith(
 				"droid");
-		definitionView = (TextView) findViewById(R.id.def);
-		definitionView.setTextColor(Color.parseColor("#ffc754"));
-		posView = (TextView) findViewById(R.id.pos);
-		posView.setTextColor(Color.parseColor("#ffc754"));
-		play_sound = (ImageView) findViewById(R.id.play_sound);
-		img_def = (ImageView) findViewById(R.id.img_def);
 		
-		if(definitionView == null)
-		{
-			System.exit(0);
-		}
+		List<Fragment> fragments = new ArrayList<Fragment>();
+		DefPage defPage = new DefPage(TYPE_DEF);
+		DefPage multipleWordPage = new DefPage(TYPE_MWV);
+		defHandler = defPage.getHandler();
+		mwHandler = multipleWordPage.getHandler();
+		fragments.add(defPage);
+		fragments.add(multipleWordPage);
+		
+		mPager = (ViewPager) findViewById(R.id.pager);
+        mPagerAdapter = new ScreenSlidePagerAdapter(getSupportFragmentManager(), fragments);
+        mPager.setAdapter(mPagerAdapter);
+        mRenderer = new TextRecoRenderer(this, vuforiaAppSession, defHandler, mwHandler);
 		
 		Parse.initialize(this, "dNSrgbF0wn6FqmxiApvKo4ygEShIS25E8QOBLrYy", "6nLbWZTpHE9hASVgNC2IADpfi6A4OVDzsx8w3Kdn");
 	}
+	
+	private class ScreenSlidePagerAdapter extends FragmentPagerAdapter 
+	{
+		private List<Fragment> fragments;
+		public ScreenSlidePagerAdapter(FragmentManager fm, List<Fragment> fragments) 
+		{
+			super(fm);
+			this.fragments = fragments;
+        }
+
+        @Override
+        public Fragment getItem(int position) 
+        {
+    		return fragments.get(position);
+        }
+
+        @Override
+        public int getCount() {
+            return fragments.size();
+        }
+    }
 
 	// Process Single Tap event to trigger autofocus
 	private class GestureListener extends
@@ -218,285 +256,7 @@ public class TextReco extends Activity implements SampleApplicationControl
 		}
 	}
 
-	 private String capitalize(String line)
-	    {
-	      return Character.toUpperCase(line.charAt(0)) + line.substring(1);
-	    }
-	 
-	//HERE IS THIS FUCKING HANDLER
-	private final Handler handler = new Handler()
-	{
-		public void handleMessage(Message msg)
-		{            
-			try
-			{
-				Bundle b = msg.getData();
-				String data[] = b.getStringArray("def");
-				data[0] = data[0].replace(":", "");
-				data[0] = data[0].replace(" .", ".");
-				data[0] = data[0].replace("&amp;", "&");
-				data[0] = data[0].replace("Un>", "");
-				definitionView.setText(Html.fromHtml("<i><font color=\"white\">" + capitalize(data[3]) + ": <\font></i>" + (capitalize(data[0])) + "."));
-				
-				if(data[1].equals("noun"))
-				{
-					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"cyan\">" + capitalize(data[1]) + "<\font>"));
-				}
-				else if(data[1].equals("verb"))
-				{
-					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"magenta\">" + capitalize(data[1]) + "<\font>"));
-				}
-				else if(data[1].equals("adjective"))
-				{
-					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"green\">" + capitalize(data[1]) + "<\font>"));
-				}
-				else if(data[1].equals("adverb"))
-				{
-					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"red\">" + capitalize(data[1]) + "<\font>"));
-				}
-				else if(data[1].equals("pronoun"))
-				{
-					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"blue\">" + capitalize(data[1]) + "<\font>"));
-				}
-				else if(data[1].equals("conjunction"))
-				{
-					posView.setText(Html.fromHtml("<font color=\"white\"><i>Part of speech: </i><\font><font color=\"brown\">" + capitalize(data[1]) + "<\font>"));
-				}
-				
-				final String URL = data[2];
-				final String name = data[3];
-				//new ImageSearchApi().execute(img_def, data[3]);
-				
-				play_sound.setOnClickListener(new OnClickListener(){
-
-					@Override
-					public void onClick(View v) {
-						// TODO Auto-generated method stub
-						new PlaySound().execute(URL);
-					}
-					
-				});
-				
-				img_def.setOnClickListener(new OnClickListener(){
-
-					@Override
-					public void onClick(View v) {
-						// TODO Auto-generated method stub
-						Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?site=imghp&tbm=isch&source=hp&biw=1440&bih=779&q=" + name));
-						startActivity(browserIntent);
-						
-					}
-					
-					
-					
-				});
-				
-				/*img_def.setOnLongClickListener(new OnLongClickListener(){
-
-					@Override
-					public boolean onLongClick(View v) {
-						// TODO Auto-generated method stub
-						 MediaPlayer mp = MediaPlayer.create(context, R.raw.fox_short);
-		                    mp.setOnCompletionListener(new OnCompletionListener() {
-
-		                        @Override
-		                        public void onCompletion(MediaPlayer mp) {
-		                            // TODO Auto-generated method stub
-		                            mp.release();
-		                        }
-
-		                    });   
-		                    mp.start();
-						return false;
-					}
-					
-				});*/
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
-		}
-	};
 	
-	private class PlaySound extends AsyncTask<String, Void, Void>
-	{
-		public String url = "http://media.merriam-webster.com/soundc11/";
-		MediaPlayer mediaPlayer;
-		
-		protected Void doInBackground(String... params)
-        {
-			try
-			{
-				url += params[0].charAt(0) + "/" + params[0];
-				mediaPlayer = new MediaPlayer();
-				mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-				mediaPlayer.setDataSource(url);
-				mediaPlayer.prepareAsync();
-				//You can show progress dialog here untill it prepared to play
-				mediaPlayer.setOnPreparedListener(new OnPreparedListener() {
-				        @Override
-				        public void onPrepared(MediaPlayer mp) {
-				            //Now dismis progress dialog, Media palyer will start playing
-				            mp.start();
-				        }
-				    });
-				    mediaPlayer.setOnErrorListener(new OnErrorListener() {
-				        @Override
-				        public boolean onError(MediaPlayer mp, int what, int extra) {
-				            // dissmiss progress bar here. It will come here when MediaPlayer
-				            //  is not able to play file. You can show error message to user
-				            return false;
-				        }
-				    });
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
-
-			return null;
-        }
-		
-		protected void onPostExecute(Void result)
-		{
-			
-		}
-	}
-	public class ImageSearchApi extends AsyncTask<Object, Void, String>
-	{
-		ImageView iv;
-		String endpoint;
-	protected String doInBackground(Object... arg0)
-	{
-		String result = null;
-		String img = null;
-		iv = (ImageView) arg0[0];
-		endpoint = URL + (String) arg0[1];
-		
-		if (endpoint.startsWith("http://") || endpoint.startsWith("https://"))
-		{
-			// Send a GET request
-			try
-			{
-				// Send data
-				URL url = new URL(endpoint);
-				URLConnection conn = url.openConnection();
-
-				// Get the response
-				BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-				StringBuffer sb = new StringBuffer();
-				String line;
-				while ((line = rd.readLine()) != null)
-				{
-					sb.append(line);
-				}
-				rd.close();
-				result = sb.toString();
-			} catch (Exception e)
-			{
-				e.printStackTrace();
-				result = null;
-			}
-		}
-		
-		try 
-		{
-			//HERE?
-			JSONObject object = (JSONObject) new JSONTokener(result).nextValue();
-			JSONObject resultsObject =  (JSONObject) object.getJSONObject("responseData").getJSONArray("results").get(0);
-			String url = (String) resultsObject.get("unescapedUrl");
-			img = url.toString();
-		    
-		} catch (Exception e) 
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			result = null;
-		}
-		return null;
-	}
-	
-		protected void onPostExecute(String img)
-		{
-			if(img != null)
-			{
-				new loadImageFromParse().execute(iv, img);
-			}
-		}
-	}
-	
-	
-	protected class loadImageFromParse extends AsyncTask<Object, Integer, Void>
-    {
-        ImageView photo;
-        Bitmap image;
-        File compressed;
-        String word;
-
-        protected Void doInBackground(Object... arg0) //ImageView as arg0, word as arg1
-        {
-            try
-            {
-                photo = (ImageView) arg0[0];
-                URL url = new URL((String)arg0[1]);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                InputStream is = connection.getInputStream();
-
-                compressed = new File(context.getFilesDir() + "/" + word);
-                FileOutputStream fos = new FileOutputStream(compressed);
-                BufferedOutputStream bos = new BufferedOutputStream(fos, 1024);
-                byte data[] = new byte[1024];
-
-                int bytesRead = 0;
-                while((bytesRead = is.read(data, 0, data.length)) >= 0)
-                {
-                    bos.write(data, 0, bytesRead);
-                }
-
-                bos.close();
-                fos.close();
-                is.close();
-
-               
-
-                BitmapFactory.Options o2 = new BitmapFactory.Options();
-                o2.inSampleSize=1;
-                image = BitmapFactory.decodeStream(new FileInputStream(compressed), null, o2);
-
-
-            }
-            catch(Exception e)
-            {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        protected void onPostExecute(Void v)
-        {
-            if(image != null)
-            {
-                //final Animation in = new AlphaAnimation(0.0f, 1.0f);
-                //in.setDuration(1000);
-                photo.setImageBitmap(image);
-                //photo.startAnimation(in);
-
-                photo.setOnClickListener(new View.OnClickListener()
-                {
-                    @Override
-                    public void onClick(View view)
-                    {
-                        //Intent fullscreenimage = new Intent(context, FullScreenImageView.class);
-                        //fullscreenimage.putExtra("image", file.getAbsolutePath());
-                        //fullscreenimage.putExtra("caption", " ");
-                        //startActivity(fullscreenimage);
-                    }
-                });
-            }
-        }
-    }
-
 
 
 	// Called when the activity will start interacting with the user.
@@ -669,8 +429,8 @@ public class TextReco extends Activity implements SampleApplicationControl
 
 		mGlView = new SampleApplicationGLView(this);
 		mGlView.init(translucent, depthSize, stencilSize);
-
-		mRenderer = new TextRecoRenderer(this, vuforiaAppSession, handler);
+		
+		//mRenderer = new TextRecoRenderer(this, vuforiaAppSession, handler);
 		mGlView.setRenderer(mRenderer);
 
 		showLoupe(false);
@@ -1155,6 +915,33 @@ public class TextReco extends Activity implements SampleApplicationControl
 	private void showToast(String text)
 	{
 		Toast.makeText(this, text, Toast.LENGTH_SHORT).show();
+	}
+	
+	class ShowAnim extends Animation {
+	    int targetHeight;
+	    View view;
+
+	    public ShowAnim(View view, int targetHeight) {
+	        this.view = view;
+	        this.targetHeight = targetHeight;
+	    }
+
+	    @Override
+	    protected void applyTransformation(float interpolatedTime, Transformation t) {
+	        view.getLayoutParams().width = (int) (targetHeight * interpolatedTime);
+	        view.requestLayout();
+	    }
+
+	    @Override
+	    public void initialize(int width, int height, int parentWidth,
+	            int parentHeight) {
+	        super.initialize(width, height, parentWidth, parentHeight);
+	    }
+
+	    @Override
+	    public boolean willChangeBounds() {
+	        return true;
+	    }
 	}
 
 }

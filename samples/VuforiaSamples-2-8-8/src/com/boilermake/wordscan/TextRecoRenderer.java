@@ -21,6 +21,7 @@ import java.util.List;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
@@ -29,6 +30,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import android.view.ViewGroup.LayoutParams;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.boilermake.wordscan.samples.SampleApplication.SampleApplicationSession;
@@ -114,18 +117,24 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
     Vec2F wordBoxSize = null;
     TrackableResult result;
     public static Map<String, String[]> wordCache;
-    String definition[] = null;
+    static String definition[] = null;
     static boolean monitorState = false;
     static final Object monitor = new Object();
-    Handler handler;
+    Handler defHandler, mwHandler;
     String last_word = null;
+    ArrayList<String> words;
+    NetworkManager dictionaryConnection;
+    String currentWord = "";
     
     
-    public TextRecoRenderer(TextReco activity, SampleApplicationSession session, Handler handler)
+    public TextRecoRenderer(TextReco activity, SampleApplicationSession session, Handler defHandler, Handler mwHandler)
     {
         mActivity = activity;
         vuforiaAppSession = session;
-        this.handler = handler;
+        this.defHandler = defHandler;
+        this.mwHandler = mwHandler;
+        words = new ArrayList<String>();
+        dictionaryConnection = new NetworkManager();
         
         if(wordCache == null)
         {
@@ -306,14 +315,32 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
         
         // did we find any trackables this frame?
         int num_track = state.getNumTrackableResults();
+        words.clear();
+        String wordU = "";
+        
         for (int tIdx = 0; tIdx < num_track; tIdx++)
         {
+        	result = state.getTrackableResult(tIdx);
+        	if (result.isOfType(WordResult.getClassType()))
+            {
+                WordResult wordResult = (WordResult) result;
+                Word word = (Word) wordResult.getTrackable();
+                obb = wordResult.getObb();
+                wordBoxSize = word.getSize();
+                words.add(word.getStringU());
+                wordU = word.getStringU();
+            }
+        }
+        
+        for (int tIdx = 0; tIdx < num_track; tIdx++)
+        {
+        	int num_found = num_track;
         	if(num_track > 1)
         	{
         		num_track = 1;
         	}
             // get the trackable
-            result = state.getTrackableResult(tIdx);
+            //result = state.getTrackableResult(tIdx);
             
             
             
@@ -324,19 +351,16 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
                 obb = wordResult.getObb();
                 wordBoxSize = word.getSize();
                 
-                String wordU = word.getStringU();
-                
-                
-                
-                //if(!wordU.toLowerCase().equals(last_word))
-                //{
                 	String ret[] = null;
                 	if((ret = wordCache.get(wordU.toLowerCase())) == null)
                 	{
-                		new GetDictionaryListing().execute(wordU.toLowerCase());
-                		waitForThread();
+                		if(!wordU.equalsIgnoreCase(currentWord))
+                		{
+                			currentWord = wordU;
+                			new NetworkManager().execute(wordU.toLowerCase());
+                			waitForThread();
+                		}
                 	}
-                //}
                 
                 	try
                 	{
@@ -377,11 +401,16 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
 	                        last_word = wordU;
                 		}
                 		
-	                	Message msgObj = handler.obtainMessage();
-	                    Bundle b = new Bundle();
-	                    b.putStringArray("def", ret);
-	                    msgObj.setData(b);
-	                    handler.sendMessage(msgObj);
+	                	Message defObj = defHandler.obtainMessage();
+	                	Message mwObj = mwHandler.obtainMessage();
+	                    Bundle def = new Bundle();
+	                    Bundle mw = new Bundle();
+	                    def.putStringArray("def", ret);
+	                    mw.putStringArray("words", words.toArray(new String[words.size()]));
+	                    defObj.setData(def);
+	                    mwObj.setData(mw);
+	                    defHandler.sendMessage(defObj);
+	                    mwHandler.sendMessage(mwObj);
                 	}
                 	catch(Exception e)
                 	{
@@ -484,7 +513,6 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
         viewportSize_x = vpSizeX;
         viewportSize_y = vpSizeY;
     }
-    
     
     private void drawRegionOfInterest(float center_x, float center_y,
         float width, float height)
@@ -603,68 +631,80 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
         
     }
     
+    private String capitalize(String line)
+    {
+      return Character.toUpperCase(line.charAt(0)) + line.substring(1);
+    }
     
-    
-    private class GetDictionaryListing extends AsyncTask<String, Void, Void>
+    public class NetworkManager extends AsyncTask<String, Void, Void>
     {
     	public static final String API_KEY = "cd3ce78c-7dff-41fa-b9a2-a5fd0824287c";
     	public static final String DICT_URL = "http://www.dictionaryapi.com/api/v1/references/sd2/xml/"; //school?key="
+    	Context context;
     	
     	protected Void doInBackground(String... params)
         {
-	    		try
-	    		{
-	    			URL url = new URL(DICT_URL + params[0] + "?key=" + API_KEY);
-	    			URLConnection conn = url.openConnection();
-	    			String line;
-	    			
-	    			String def = null;
-	    			String pos = null;
-	    			String soundpath = null;
-	    			BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-	    			while((line = in.readLine()) != null)
-	    			{
-	    				if(line.contains("<entry id"))
-	    				{
-	    				 	  pos = line.substring(line.indexOf("<fl>") + 4);
-	    				 	  //System.out.println(pos);
-	    				 	  pos = pos.substring(0, pos.indexOf("</fl>"));
-	    				 	  //System.out.println(pos);
-	    				 	  
-	    				 	  soundpath = line.substring(line.indexOf("<wav>") + 5);
-	    				 	  //System.out.println(soundpath);
-	    				 	  soundpath = soundpath.substring(0, soundpath.indexOf("</wav>"));
-	    				 	  //System.out.println(soundpath);
-	    				 	  
-	    				 	  def = line.substring(line.indexOf("<dt>") + 5);
-	    				 	  //System.out.println(def);
-	    					  def = def.substring(0,def.indexOf("<"));
-	    					  //System.out.println(def);
-	    					  break;
-	    				}
-	    			}
-	    				 
-	    				 	    			
-	    				 	    		System.out.println(def + ", " + pos + ", " + soundpath);
-	    				 	    		
-	    				 	    			if(def != null && pos != null && soundpath != null)
-	    				 	    			{
-	    				 	    				
-	    				 	    				String data[] = new String[4];
-	    				 	    				data[0] = def;
-	    				 	    				data[1] = pos;
-	    				 	    				data[2] = soundpath;
-	    				 	    				data[3] = params[0];
-	    				 	    				wordCache.put(params[0], data);
-	    				 	    				definition = data;
-	    				 	    				
-	    				 	    			}
-	    		    
-	    		}
-	    		catch(Exception e)
-	    		{
-	    			e.printStackTrace();
-	    		}
+        		try
+        		{
+        			System.out.println("New Background Task");
+        			URL url = new URL(DICT_URL + params[0] + "?key=" + API_KEY);
+        			URLConnection conn = url.openConnection();
+        			String line;
+        			
+        			String def = null;
+        			String pos = null;
+        			String soundpath = null;
+        			BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        			while((line = in.readLine()) != null)
+        			{
+        				if(line.contains("<entry id"))
+        				{
+        				 	  pos = line.substring(line.indexOf("<fl>") + 4);
+        				 	  //System.out.println(pos);
+        				 	  pos = pos.substring(0, pos.indexOf("</fl>"));
+        				 	  //System.out.println(pos);
+        				 	  
+        				 	  soundpath = line.substring(line.indexOf("<wav>") + 5);
+        				 	  //System.out.println(soundpath);
+        				 	  soundpath = soundpath.substring(0, soundpath.indexOf("</wav>"));
+        				 	  //System.out.println(soundpath);
+        				 	  
+        				 	  def = line.substring(line.indexOf("<dt>") + 5);
+        				 	  //System.out.println(def);
+        					  def = def.substring(0,def.indexOf("<"));
+        					  //System.out.println(def);
+        					  break;
+        				}
+        			}
+        				 
+        				 	    			
+        				 	    		System.out.println(def + ", " + pos + ", " + soundpath);
+        				 	    		
+        				 	    			if(def != null && pos != null && soundpath != null)
+        				 	    			{
+        				 	    				
+        				 	    				String data[] = new String[4];
+        				 	    				data[0] = capitalize(def);
+        				 	    				data[1] = capitalize(pos);
+        				 	    				data[2] = soundpath;
+        				 	    				data[3] = capitalize(params[0]);
+        				 	    				wordCache.put(params[0], data);
+        				 	    				definition = data;
+        				 	    				
+        				 	    			}
+        		    
+        		}
+        		catch(Exception e)
+        		{
+        			String data[] = new String[4];
+        			data[0] = "Sorry--Word Not Found in Dictionary";
+        			data[1] = "N/A";
+        			data[2] = "";
+	    			data[3] = capitalize(params[0]);
+	    			wordCache.put(params[0], data);
+	    			definition = data;
+        			e.printStackTrace();
+        		}
     		return null;
         }
     	
@@ -675,5 +715,7 @@ public class TextRecoRenderer implements GLSurfaceView.Renderer
     	
 
     }
+    
+    
     
 }

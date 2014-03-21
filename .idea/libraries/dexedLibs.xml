@@ -1,0 +1,19 @@
+<component name="libraryTable">
+  <library name="dexedLibs">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/android-support-v7-appcompat-2643f6ec71aa4e815223e1b7546770ec.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/android-support-v7-appcompat-19695bfa362d992b12dc6355c2e108e2.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/android-support-v7-mediarouter-2df97f92f899df7abc01b6da3130d3fa.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/Vuforia-6ca8d81516bc85e9fa1514600eda442f.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/mongo-java-driver-2.9.3-sources-ebbc48f9c79ae3fe1080e815aaf1f267.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/Parse-1.4.0-be28757029b8baf05716ece456fad238.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/mongo-java-driver-2.9.3-88899282a51a1e43d1a710263e9abca5.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/google-play-services_lib-ec28f9f02362b58c5a4fac3f9b854f98.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/android-support-v4-736b9c2f446534c3fd10d78aa1e2a79f.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/google-play-services-aa3cf632318fed41f33da5bff14eb0a8.jar!/" />
+      <root url="jar://$PROJECT_DIR$/samples/VuforiaSamples-2-8-8/bin/dexedLibs/android-support-v7-mediarouter-ec9a30ba4a7397b7a42a956ca5604051.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
