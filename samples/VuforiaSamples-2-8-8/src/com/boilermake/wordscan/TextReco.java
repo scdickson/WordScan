@@ -48,7 +48,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Settings;
-import android.support.v7.media.MediaRouter;
+//import android.support.v7.media.MediaRouter;
 import android.text.Layout.Alignment;
 import android.text.Html;
 import android.text.StaticLayout;
@@ -154,7 +154,7 @@ public class TextReco extends FragmentActivity implements SampleApplicationContr
 
 	boolean mIsDroidDevice = false;
 
-	private MediaRouter mMediaRouter;
+	//private MediaRouter mMediaRouter;
 	
 	Handler defHandler, mwHandler;
 
@@ -171,7 +171,7 @@ public class TextReco extends FragmentActivity implements SampleApplicationContr
 
 		vuforiaAppSession = new SampleApplicationSession(this);
 
-		mMediaRouter = MediaRouter.getInstance(getApplicationContext());
+		//mMediaRouter = MediaRouter.getInstance(getApplicationContext());
 
 		startLoadingAnimation();
 

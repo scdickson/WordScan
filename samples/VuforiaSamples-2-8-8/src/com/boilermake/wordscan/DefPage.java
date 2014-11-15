@@ -31,6 +31,7 @@ import android.os.Message;
 import android.support.v4.app.Fragment;
 import android.text.Html;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.View.OnClickListener;
@@ -49,6 +50,7 @@ public class DefPage extends Fragment
 	public LinearLayout defLayout, listLayout, buttonLayout;
 	Context context;
 	int type;
+	boolean ee;
 	
 	public DefPage(int type)
 	{
@@ -201,26 +203,25 @@ public class DefPage extends Fragment
 					
 				});
 				
-				/*img_def.setOnLongClickListener(new OnLongClickListener(){
-
+				img_def.setOnTouchListener(new View.OnTouchListener() {
+					
 					@Override
-					public boolean onLongClick(View v) {
-						// TODO Auto-generated method stub
-						 MediaPlayer mp = MediaPlayer.create(context, R.raw.fox_short);
-		                    mp.setOnCompletionListener(new OnCompletionListener() {
-
-		                        @Override
-		                        public void onCompletion(MediaPlayer mp) {
-		                            // TODO Auto-generated method stub
-		                            mp.release();
-		                        }
-
-		                    });   
-		                    mp.start();
+					public boolean onTouch(View v, MotionEvent event) 
+					{
+						if(event.getSource() == MotionEvent.ACTION_DOWN)
+						{
+							System.out.println("DOWN");
+							ee = true;
+						}
+						else if(event.getSource() == MotionEvent.ACTION_UP)
+						{
+							System.out.println("UP");
+							ee = false;
+						}
 						return false;
 					}
-					
-				});*/
+				});
+				
 				
 			}
 			catch(Exception e)
